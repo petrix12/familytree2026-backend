@@ -1,0 +1,12 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno
+.env
+.env.local
+.env.*
+
+# Archivos de registro y sistema
+*.log
+.DS_Store
+dist/ 
