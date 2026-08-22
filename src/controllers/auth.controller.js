@@ -104,8 +104,8 @@ const login = async (req, res) => {
             });
         }
 
-        // Comprobar contraseña
-        const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+        // Comprobar contraseña (usando user.password)
+        const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
             return res.status(401).json({
                 status: 'fail',
@@ -126,8 +126,7 @@ const login = async (req, res) => {
                 user: {
                     id: user.id,
                     email: user.email,
-                    firstName: user.firstName,
-                    lastName: user.lastName,
+                    name: user.name, // ✅ Corregido (en lugar de firstName / lastName)
                     roles: userRoles,
                 },
                 token,
