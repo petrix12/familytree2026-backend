@@ -138,4 +138,66 @@ const login = async (req, res) => {
     }
 };
 
-module.exports = { register, login };
+// 3. OBTENER USUARIO ACTUAL (VERIFICAR SESIÓN)
+const getMe = async (req, res) => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: req.user.id },
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                createdAt: true,
+                roles: {
+                    select: {
+                        role: {
+                            select: { name: true },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!user) {
+            return res.status(404).json({
+                status: 'fail',
+                message: 'Usuario no encontrado',
+            });
+        }
+
+        const userRoles = user.roles.map((ur) => ur.role.name);
+
+        return res.status(200).json({
+            status: 'success',
+            data: {
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name,
+                    roles: userRoles,
+                    createdAt: user.createdAt,
+                },
+            },
+        });
+    } catch (error) {
+        console.error('Error en getMe:', error);
+        return res.status(500).json({ status: 'error', message: 'Error interno del servidor' });
+    }
+};
+
+// 4. CIERRE DE SESIÓN (LOGOUT)
+const logout = async (req, res) => {
+  try {
+    // En arquitecturas stateless (JWT en Authorization Header), el servidor confirma
+    // el cierre de sesión para que el Frontend proceda a destruir el token almacenado.
+    return res.status(200).json({
+      status: 'success',
+      message: 'Sesión cerrada correctamente',
+    });
+  } catch (error) {
+    console.error('Error en logout:', error);
+    return res.status(500).json({ status: 'error', message: 'Error interno del servidor' });
+  }
+};
+
+module.exports = { register, login, getMe, logout };
