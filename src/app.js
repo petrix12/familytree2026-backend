@@ -10,14 +10,21 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Middlewares Globales
-//app.use(cors());
+const allowedOrigins = [
+    process.env.FRONTEND_URL_PROD,
+    process.env.FRONTEND_URL_LOCAL_VITE,
+    process.env.FRONTEND_URL_LOCAL_VUE_CLI,
+].filter(Boolean);
+
 app.use(cors({
-  origin: [
-    'https://familytree2026-frontend.vercel.app',
-    'http://localhost:5173',
-    'http://localhost:3000'
-  ],
-  credentials: true
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('No permitido por CORS'));
+        }
+    },
+    credentials: true
 }));
 app.use(express.json());
 
