@@ -2,7 +2,9 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+// Rutas
 const authRoutes = require('./routes/auth.routes');
+const adminRoutes = require('./routes/admin.routes');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -10,6 +12,11 @@ const PORT = process.env.PORT || 4000;
 // Middlewares Globales
 app.use(cors());
 app.use(express.json());
+
+// Ruta raíz informativa
+app.get('/', (req, res) => {
+    res.send('API REST de FamilyTree2026 ejecutándose. Visita /api/v1/health para estado.');
+});
 
 // Ruta de comprobación de estado (Health Check)
 app.get('/api/v1/health', (req, res) => {
@@ -23,6 +30,7 @@ app.get('/api/v1/health', (req, res) => {
 
 // Registrar Rutas de la API
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // Inicialización del Servidor
 app.listen(PORT, () => {

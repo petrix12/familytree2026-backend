@@ -2,8 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/prisma');
 
-// Auxiliar para generar Tokens JWT
-const generateToken = (user, roles) => {
+const generateToken = (user, roles = []) => {
     return jwt.sign(
         {
             id: user.id,
@@ -15,13 +14,12 @@ const generateToken = (user, roles) => {
     );
 };
 
-// 1. REGISTRO DE USUARIO
+// 1. REGISTRO DE USUARIO (Sin roles por defecto)
 const register = async (req, res) => {
     try {
         const { email, password, firstName, lastName } = req.body;
         const fullName = `${firstName} ${lastName}`;
 
-        // Verificar si el usuario ya existe
         const existingUser = await prisma.user.findUnique({ where: { email } });
         if (existingUser) {
             return res.status(400).json({
@@ -30,30 +28,15 @@ const register = async (req, res) => {
             });
         }
 
-        // Buscar el rol por defecto (USER)
-        const defaultRole = await prisma.role.findUnique({ where: { name: 'USER' } });
-        if (!defaultRole) {
-            return res.status(500).json({
-                status: 'error',
-                message: 'El rol por defecto (USER) no existe en la base de datos',
-            });
-        }
-
-        // Encriptar la contraseña
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
-        // Crear el usuario y asignarle el rol USER en una transacción implícita
+        // Se crea el usuario SIN incluir la relación de roles
         const newUser = await prisma.user.create({
             data: {
                 email,
-                password: passwordHash, // Usamos la columna 'password' del schema
-                name: fullName,         // Usamos la columna 'name' del schema
-                roles: {
-                    create: {
-                        roleId: defaultRole.id,
-                    },
-                },
+                password: passwordHash,
+                name: fullName,
             },
             select: {
                 id: true,
@@ -63,14 +46,17 @@ const register = async (req, res) => {
             },
         });
 
-        // Generar Token
-        const token = generateToken(newUser, ['USER']);
+        // Se genera token con un arreglo de roles vacío []
+        const token = generateToken(newUser, []);
 
         return res.status(201).json({
             status: 'success',
-            message: 'Usuario registrado correctamente',
+            message: 'Usuario registrado correctamente (sin permisos asignados)',
             data: {
-                user: newUser,
+                user: {
+                    ...newUser,
+                    roles: [],
+                },
                 token,
             },
         });
