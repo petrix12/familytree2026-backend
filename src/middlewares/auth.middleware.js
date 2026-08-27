@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const prisma = require('../config/prisma');
 
 // 1. Verificar si la petición incluye un Token JWT válido
 const authenticateJWT = (req, res, next) => {
@@ -48,4 +49,63 @@ const authorizeRoles = (...allowedRoles) => {
     };
 };
 
-module.exports = { authenticateJWT, authorizeRoles };
+// 3. Middleware para verificar si el usuario posee un permiso específico
+const checkPermission = (requiredPermission) => {
+    return async (req, res, next) => {
+        try {
+            const userId = req.user.id;
+
+            // Consultar los roles del usuario incluyendo sus permisos
+            const userWithRoles = await prisma.user.findUnique({
+                where: { id: userId },
+                include: {
+                    roles: {
+                        include: {
+                            role: {
+                                include: {
+                                    permissions: {
+                                        include: { permission: true }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            if (!userWithRoles) {
+                return res.status(401).json({ status: 'fail', message: 'Usuario no autenticado' });
+            }
+
+            // Extraer nombres de roles
+            const userRoleNames = userWithRoles.roles.map(ur => ur.role.name);
+
+            // SUPER_ADMIN tiene acceso global a todo
+            if (userRoleNames.includes('SUPER_ADMIN')) {
+                return next();
+            }
+
+            // Extraer todas las acciones permitidas de todos sus roles
+            const userPermissions = new Set();
+            userWithRoles.roles.forEach(ur => {
+                ur.role.permissions.forEach(rp => {
+                    userPermissions.add(rp.permission.action);
+                });
+            });
+
+            if (!userPermissions.has(requiredPermission)) {
+                return res.status(403).json({
+                    status: 'fail',
+                    message: `No tienes el permiso necesario (${requiredPermission}) para realizar esta acción`,
+                });
+            }
+
+            next();
+        } catch (error) {
+            console.error('Error en verificación de permisos:', error);
+            return res.status(500).json({ status: 'error', message: 'Error interno del servidor' });
+        }
+    };
+};
+
+module.exports = { authenticateJWT, authorizeRoles, checkPermission };

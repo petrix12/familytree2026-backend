@@ -22,27 +22,77 @@ model User {
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
   roles     UserRole[]
+  auditLogs AuditLog[]
 
   @@map("users")
 }
 
 // Modelo de Rol
 model Role {
-  id          String     @id @default(uuid())
-  name        String     @unique // Ej: "SUPER_ADMIN", "ADMIN", "USER"
+  id          String           @id @default(uuid())
+  name        String           @unique
   description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @default(now()) @updatedAt
   users       UserRole[]
+  permissions RolePermission[]
 
   @@map("roles")
 }
 
+// Modelo de Permission
+model Permission {
+  id          String           @id @default(uuid())
+  action      String           @unique // Ej: "users:read", "users:write"
+  module      String // Ej: "users", "roles", "system"
+  description String?
+  createdAt   DateTime         @default(now())
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+// Tabla Pivote: Relación M:N entre Role y Permission
+model RolePermission {
+  roleId       String
+  permissionId String
+  assignedAt   DateTime   @default(now())
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
 // Tabla Intermedia para Relación N:M
 model UserRole {
-  userId String
-  roleId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  userId     String
+  roleId     String
+  assignedAt DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@id([userId, roleId])
   @@map("user_roles")
+}
+
+// Auditoría y Logs
+model AuditLog {
+  id     String  @id @default(uuid())
+  userId String? // Opcional por si la acción la ejecuta un usuario no autenticado o el sistema
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  action   String // Ejemplos: 'USER_CREATED', 'ROLE_UPDATED', 'PERSON_DELETED'
+  entity   String // La entidad afectada: 'User', 'Person', 'Tree', 'Auth'
+  entityId String? // ID del registro afectado (si aplica)
+
+  details   Json? // Información extra (ej. cambios anteriores y nuevos, IP, User-Agent)
+  ipAddress String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([entity])
+  @@index([createdAt])
 }
