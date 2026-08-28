@@ -2,6 +2,9 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
+// Middlewares
+const { setAuditUser } = require('./middlewares/auditContext.middleware');  // <- Nuevo middleware para establecer el contexto de auditoría
+
 // Rutas
 const authRoutes = require('./routes/auth.routes');
 const adminRoutes = require('./routes/admin.routes');
@@ -27,6 +30,9 @@ app.use(cors({
     credentials: true
 }));
 app.use(express.json());
+
+// Contexto de auditoría global para envolver la petición HTTP
+app.use(setAuditUser);  // <- Nuevo middleware para establecer el contexto de auditoría 
 
 // Ruta raíz informativa
 app.get('/', (req, res) => {

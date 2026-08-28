@@ -1,7 +1,32 @@
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/prisma');
+const { auditStorage } = require('./auditContext.middleware');  // <- Nuevo
 
-// 1. Verificar si la petición incluye un Token JWT válido
+// 1. Verificar si la petición incluye un Token JWT válido y poblar el contexto de auditoría
+/* const authenticateJWT = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({
+            status: 'fail',
+            message: 'Acceso no autorizado. Debe proporcionar un Token Bearer',
+        });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded; // Adjunta el usuario (id, email, roles) al objeto request
+        next();
+    } catch (error) {
+        return res.status(403).json({
+            status: 'fail',
+            message: 'Token inválido o expirado',
+        });
+    }
+}; */
+// Nuevo: Nueva versión del middleware authenticateJWT que también actualiza el contexto de auditoría
 const authenticateJWT = (req, res, next) => {
     const authHeader = req.headers.authorization;
 
@@ -17,6 +42,13 @@ const authenticateJWT = (req, res, next) => {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = decoded; // Adjunta el usuario (id, email, roles) al objeto request
+
+        // Actualizar el context store con el ID del usuario decodificado
+        const store = auditStorage.getStore();
+        if (store) {
+            store.userId = decoded.id;
+        }
+
         next();
     } catch (error) {
         return res.status(403).json({

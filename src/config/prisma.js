@@ -1,10 +1,58 @@
 const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const { Pool } = require('pg');
+const { auditStorage } = require('../middlewares/auditContext.middleware');     // <- Nuevo
 require('dotenv').config();
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+const prismaRaw = new PrismaClient({ adapter });                // <- Nuevo
+/* const prisma = new PrismaClient({ adapter }); */     // <- Eliminar
+// Nuevo bloque
+const prisma = prismaRaw.$extends({
+    query: {
+        $allModels: {
+            async $allOperations({ model, operation, args, query }) {
+                const result = await query(args);
+
+                const writeOperations = ['create', 'update', 'delete', 'updateMany', 'deleteMany'];
+
+                if (writeOperations.includes(operation) && model !== 'AuditLog') {
+                    try {
+                        const store = auditStorage.getStore();
+                        const userId = store?.userId || null;
+
+                        const sanitizedDetails = { ...args.data };
+                        if (sanitizedDetails.password) {
+                            sanitizedDetails.password = '[PROTECTED]';
+                        }
+
+                        // Mapeo de datos para AuditLog
+                        const auditData = {
+                            action: `${operation.toUpperCase()}_${model.toUpperCase()}`,
+                            entity: model,
+                            entityId: result?.id ? String(result.id) : (args?.where?.id ? String(args.where.id) : 'N/A'),
+                            details: JSON.stringify(sanitizedDetails),
+                        };
+
+                        // Si existe un usuario autenticado, conectarlo a la relación de Prisma
+                        if (userId) {
+                            auditData.user = { connect: { id: userId } };
+                        }
+
+                        await prismaRaw.auditLog.create({
+                            data: auditData,
+                        });
+                    } catch (error) {
+                        console.error('Error registrando auditoría en Prisma Extension:', error);
+                    }
+                }
+
+                return result;
+            },
+        },
+    },
+});
+
 
 module.exports = prisma;
