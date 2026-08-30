@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/prisma');
-const { getClientIp } = require('../utils/request.utils');  // <- Nuevo
+const { getClientIp } = require('../utils/request.utils');
 
 const generateToken = (user, roles = []) => {
     return jwt.sign(
@@ -91,8 +91,8 @@ const login = async (req, res) => {
                 await prisma.auditLog.create({
                     data: {
                         action: 'LOGIN_FAILED',
-                        entity: 'User',
-                        ipAddress: getClientIp(req),    // <- Nuevo
+                        entity: 'Auth',
+                        ipAddress: getClientIp(req),
                         details: JSON.stringify({ email, reason: 'Usuario no encontrado', ip: req.ip }),
                     },
                 });
@@ -112,8 +112,8 @@ const login = async (req, res) => {
             await prisma.auditLog.create({
                 data: {
                     action: 'LOGIN_FAILED',
-                    entity: 'User',
-                    ipAddress: getClientIp(req),    // <- Nuevo
+                    entity: 'Auth',
+                    ipAddress: getClientIp(req),
                     details: JSON.stringify({ email, reason: 'Contraseña incorrecta', ip: req.ip }),
                 },
             });
@@ -132,9 +132,9 @@ const login = async (req, res) => {
         await prisma.auditLog.create({
             data: {
                 action: 'LOGIN_SUCCESS',
-                entity: 'User',
+                entity: 'Auth',
                 entityId: String(user.id),
-                ipAddress: getClientIp(req),    // <- Nuevo
+                ipAddress: getClientIp(req),
                 user: { connect: { id: user.id } },
                 details: JSON.stringify({ ip: req.ip, userAgent: req.headers['user-agent'] }),
             },
@@ -208,41 +208,31 @@ const getMe = async (req, res) => {
 
 // 4. CIERRE DE SESIÓN (LOGOUT)
 const logout = async (req, res) => {
-  try {
-    // Registrar Logout
-    if (req.user?.id) {
-        await prisma.auditLog.create({
-            data: {
-                action: 'LOGOUT',
-                entity: 'User',
-                entityId: String(req.user.id),
-                ipAddress: getClientIp(req),    // <- Nuevo
-                user: { connect: { id: req.user.id } },
-                details: JSON.stringify({ ip: req.ip }),
-            },
-        });
-    }
+    try {
+        // Registrar Logout
+        if (req.user?.id) {
+            await prisma.auditLog.create({
+                data: {
+                    action: 'LOGOUT',
+                    entity: 'Auth',
+                    entityId: String(req.user.id),
+                    ipAddress: getClientIp(req),
+                    user: { connect: { id: req.user.id } },
+                    details: JSON.stringify({ ip: req.ip }),
+                },
+            });
+        }
 
-    // En arquitecturas stateless (JWT en Authorization Header), el servidor confirma
-    // el cierre de sesión para que el Frontend proceda a destruir el token almacenado.
-    return res.status(200).json({
-        status: 'success',
-        message: 'Sesión cerrada correctamente',
-    });
+        // En arquitecturas stateless (JWT en Authorization Header), el servidor confirma
+        // el cierre de sesión para que el Frontend proceda a destruir el token almacenado.
+        return res.status(200).json({
+            status: 'success',
+            message: 'Sesión cerrada correctamente',
+        });
     } catch (error) {
         console.error('Error en logout:', error);
         return res.status(500).json({ status: 'error', message: 'Error interno del servidor' });
     }
 };
-
-/* const getClientIp = (req) => {
-    let ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress || req.ip;
-    
-    // Normalizar loopback de IPv6 a IPv4 si se prefiere ese formato
-    if (ip === '::1' || ip === '::ffff:127.0.0.1') {
-        return '127.0.0.1';
-    }
-    return ip;
-}; */
 
 module.exports = { register, login, getMe, logout };

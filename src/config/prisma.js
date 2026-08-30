@@ -20,7 +20,7 @@ const prisma = prismaRaw.$extends({
                     try {
                         const store = auditStorage.getStore();
                         const userId = store?.userId || null;
-                        const ipAddress = store?.ipAddress || '127.0.0.1';  // <- Nuevo
+                        const ipAddress = store?.ipAddress || '127.0.0.1';
 
                         const sanitizedDetails = { ...args.data };
                         if (sanitizedDetails.password) {
@@ -32,7 +32,7 @@ const prisma = prismaRaw.$extends({
                             action: `${operation.toUpperCase()}_${model.toUpperCase()}`,
                             entity: model,
                             entityId: result?.id ? String(result.id) : (args?.where?.id ? String(args.where.id) : 'N/A'),
-                            ipAddress,  // <- Nuevo
+                            ipAddress,
                             details: JSON.stringify(sanitizedDetails),
                         };
 
@@ -54,6 +54,5 @@ const prisma = prismaRaw.$extends({
         },
     },
 });
-
 
 module.exports = prisma;
