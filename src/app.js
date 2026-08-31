@@ -4,6 +4,8 @@ require('dotenv').config();
 
 // Middleware para establecer el contexto de auditoría
 const { setAuditUser } = require('./middlewares/auditContext.middleware');
+// Middleware para manejo global de errores de sistema
+const { errorHandler } = require('./middlewares/error.middleware');             // <- Nuevo
 
 // Rutas
 const authRoutes = require('./routes/auth.routes');
@@ -52,6 +54,20 @@ app.get('/api/v1/health', (req, res) => {
 // Registrar Rutas de la API
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/admin', adminRoutes);
+
+/* Inicio nuevo */
+// --- MANEJO DE ERRORES GLOBALES (Debe ser el último app.use) ---
+app.use(errorHandler);
+
+// --- CAPTURA DE ERRORES FUERA DEL CICLO HTTP ---
+process.on('unhandledRejection', (reason) => {
+    console.error('🔥 [CRITICAL] Promesa no capturada (unhandledRejection):', reason);
+});
+
+process.on('uncaughtException', (error) => {
+    console.error('🔥 [CRITICAL] Excepción no controlada (uncaughtException):', error);
+});
+/* Fin nuevo */
 
 // Inicialización del Servidor
 app.listen(PORT, () => {

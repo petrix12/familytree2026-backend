@@ -96,3 +96,18 @@ model AuditLog {
   @@index([entity])
   @@index([createdAt])
 }
+
+// Modelo SystemLog
+model SystemLog {
+  id         String   @id @default(uuid())
+  level      String   @default("ERROR") // ERROR, WARN, INFO
+  message    String
+  stackTrace String?  @db.Text
+  path       String?
+  method     String?
+  statusCode Int?     @default(500)
+  userId     String?
+  createdAt  DateTime @default(now())
+
+  @@map("system_logs")
+}

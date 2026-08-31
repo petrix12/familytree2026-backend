@@ -15,19 +15,20 @@ const prisma = prismaRaw.$extends({
                 const result = await query(args);
 
                 const writeOperations = ['create', 'update', 'delete', 'updateMany', 'deleteMany'];
+                const ignoredModels = ['AuditLog', 'SystemLog', 'system_logs', 'audit_logs'];
 
-                if (writeOperations.includes(operation) && model !== 'AuditLog') {
+                // Evitar auditar acciones sobre las tablas del sistema / logs
+                if (writeOperations.includes(operation) && !ignoredModels.includes(model)) {
                     try {
                         const store = auditStorage.getStore();
                         const userId = store?.userId || null;
                         const ipAddress = store?.ipAddress || '127.0.0.1';
 
-                        const sanitizedDetails = { ...args.data };
+                        const sanitizedDetails = args?.data ? { ...args.data } : {};
                         if (sanitizedDetails.password) {
                             sanitizedDetails.password = '[PROTECTED]';
                         }
 
-                        // Mapeo de datos para AuditLog
                         const auditData = {
                             action: `${operation.toUpperCase()}_${model.toUpperCase()}`,
                             entity: model,
@@ -36,7 +37,6 @@ const prisma = prismaRaw.$extends({
                             details: JSON.stringify(sanitizedDetails),
                         };
 
-                        // Si existe un usuario autenticado, conectarlo a la relación de Prisma
                         if (userId) {
                             auditData.user = { connect: { id: userId } };
                         }
@@ -56,3 +56,4 @@ const prisma = prismaRaw.$extends({
 });
 
 module.exports = prisma;
+module.exports.prismaRaw = prismaRaw;
