@@ -9,11 +9,16 @@ const getAuditLogs = async (req, res) => {
             action, 
             search,
             startDate,
-            endDate 
+            endDate,
+            sortBy = 'createdAt',
+            sortOrder = 'desc'
         } = req.query;
 
-        const skip = (Number(page) - 1) * Number(limit);
-        const take = Number(limit);
+        const parsedPage = Math.max(1, parseInt(page, 10) || 1);
+        const parsedLimit = Math.max(1, parseInt(limit, 10) || 15);
+
+        const skip = (parsedPage - 1) * parsedLimit;
+        const take = parsedLimit;
 
         const where = {};
 
@@ -37,8 +42,26 @@ const getAuditLogs = async (req, res) => {
 
         if (startDate || endDate) {
             where.createdAt = {};
-            if (startDate) where.createdAt.gte = new Date(startDate);
-            if (endDate) where.createdAt.lte = new Date(endDate);
+            if (startDate) {
+                const start = new Date(startDate);
+                start.setHours(0, 0, 0, 0);
+                where.createdAt.gte = start;
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999);
+                where.createdAt.lte = end;
+            }
+        }
+
+        // Construcción del ordenamiento dinámico
+        let orderBy = {};
+        if (sortBy === 'user') {
+            orderBy = { user: { name: sortOrder } };
+        } else if (['action', 'entity', 'createdAt'].includes(sortBy)) {
+            orderBy = { [sortBy]: sortOrder };
+        } else {
+            orderBy = { createdAt: 'desc' };
         }
 
         const [logs, total] = await Promise.all([
@@ -46,7 +69,7 @@ const getAuditLogs = async (req, res) => {
                 where,
                 skip,
                 take,
-                orderBy: { createdAt: 'desc' },
+                orderBy, // <--- Pasar la variable aquí
                 include: {
                     user: {
                         select: { id: true, name: true, email: true },
@@ -54,7 +77,7 @@ const getAuditLogs = async (req, res) => {
                 },
             }),
             prisma.auditLog.count({ where }),
-        ]);
+        ]);        
 
         return res.json({
             status: 'success',
@@ -62,7 +85,7 @@ const getAuditLogs = async (req, res) => {
                 logs,
                 pagination: {
                     total,
-                    page: Number(page),
+                    page: parsedPage,
                     totalPages: Math.ceil(total / take) || 1,
                 },
             },
