@@ -3,7 +3,7 @@ const { body } = require('express-validator');
 const { register, login, getMe, logout } = require('../controllers/auth.controller');
 const { authenticateJWT } = require('../middlewares/auth.middleware');
 const validate = require('../middlewares/validate.middleware');
-const { uploadAvatar } = require('../controllers/profile.controller');
+const { uploadAvatar, deleteAvatar, updateProfile } = require('../controllers/profile.controller');
 const upload = require('../middlewares/upload.middleware');
 
 const router = express.Router();
@@ -30,6 +30,8 @@ router.post('/login', loginValidation, login);
 router.get('/me', authenticateJWT, getMe);  // Endpoint protegido para verificar estado de sesión de usuario logueado
 router.post('/logout', authenticateJWT, logout);
 router.post('/avatar', authenticateJWT, upload.single('avatar'), uploadAvatar);
+router.delete('/avatar', authenticateJWT, deleteAvatar);
+router.put('/profile', authenticateJWT, updateProfile);
 
 module.exports = router;
 
