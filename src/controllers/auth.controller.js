@@ -168,6 +168,7 @@ const getMe = async (req, res) => {
                 id: true,
                 email: true,
                 name: true,
+                avatarUrl: true,
                 createdAt: true,
                 roles: {
                     select: {

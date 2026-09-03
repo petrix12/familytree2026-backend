@@ -5,7 +5,7 @@ require('dotenv').config();
 // Middleware para establecer el contexto de auditoría
 const { setAuditUser } = require('./middlewares/auditContext.middleware');
 // Middleware para manejo global de errores de sistema
-const { errorHandler } = require('./middlewares/error.middleware');             // <- Nuevo
+const { errorHandler } = require('./middlewares/error.middleware');
 
 // Rutas
 const authRoutes = require('./routes/auth.routes');

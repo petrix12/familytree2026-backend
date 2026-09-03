@@ -22,6 +22,7 @@
   },
   "homepage": "https://github.com/petrix12/familytree2026-backend#readme",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1125.0",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
     "@supabase/supabase-js": "^2.112.3",
@@ -31,6 +32,7 @@
     "express": "^5.2.1",
     "express-validator": "^7.3.2",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.3.0",
     "pg": "^8.23.0"
   },
   "devDependencies": {
