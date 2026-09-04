@@ -35,6 +35,7 @@ const getUsers = async (req, res) => {
                     id: true,
                     name: true,
                     email: true,
+                    avatarUrl: true,
                     isActive: true,
                     createdAt: true,
                     roles: {
@@ -205,6 +206,7 @@ const updateUser = async (req, res) => {
                 id: true,
                 name: true,
                 email: true,
+                avatarUrl: true,
                 isActive: true,
                 createdAt: true,
                 updatedAt: true,
