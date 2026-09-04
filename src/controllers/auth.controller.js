@@ -32,7 +32,6 @@ const register = async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const passwordHash = await bcrypt.hash(password, salt);
 
-        // Se crea el usuario SIN incluir la relación de roles
         const newUser = await prisma.user.create({
             data: {
                 email,
@@ -43,11 +42,11 @@ const register = async (req, res) => {
                 id: true,
                 email: true,
                 name: true,
+                avatarUrl: true,
                 createdAt: true,
             },
         });
 
-        // Se genera token con un arreglo de roles vacío []
         const token = generateToken(newUser, []);
 
         return res.status(201).json({
@@ -72,7 +71,6 @@ const login = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // 1. Buscar usuario con sus roles asociados
         const user = await prisma.user.findUnique({
             where: { email },
             include: {
@@ -84,9 +82,7 @@ const login = async (req, res) => {
             },
         });
 
-        // 2. Verificar si el usuario existe y si está activo
         if (!user || !user.isActive) {
-            // Si el usuario no existe, registramos el intento fallido
             if (!user) {
                 await prisma.auditLog.create({
                     data: {
@@ -104,11 +100,9 @@ const login = async (req, res) => {
             });
         }
 
-        // 3. Comprobar la contraseña mediante bcrypt
         const isPasswordValid = await bcrypt.compare(password, user.password);
 
         if (!isPasswordValid) {
-            // Registrar intento fallido por contraseña incorrecta
             await prisma.auditLog.create({
                 data: {
                     action: 'LOGIN_FAILED',
@@ -124,11 +118,9 @@ const login = async (req, res) => {
             });
         }
 
-        // 4. Extraer nombres de roles y generar Token JWT
         const userRoles = user.roles.map((ur) => ur.role.name);
         const token = generateToken(user, userRoles);
 
-        // 5. Registrar inicio de sesión exitoso
         await prisma.auditLog.create({
             data: {
                 action: 'LOGIN_SUCCESS',
@@ -148,6 +140,7 @@ const login = async (req, res) => {
                     id: user.id,
                     email: user.email,
                     name: user.name,
+                    avatarUrl: user.avatarUrl, // <-- AGREGADO AQUI
                     roles: userRoles,
                 },
                 token,
@@ -196,6 +189,7 @@ const getMe = async (req, res) => {
                     id: user.id,
                     email: user.email,
                     name: user.name,
+                    avatarUrl: user.avatarUrl, // <-- AGREGADO AQUI
                     roles: userRoles,
                     createdAt: user.createdAt,
                 },
@@ -210,7 +204,6 @@ const getMe = async (req, res) => {
 // 4. CIERRE DE SESIÓN (LOGOUT)
 const logout = async (req, res) => {
     try {
-        // Registrar Logout
         if (req.user?.id) {
             await prisma.auditLog.create({
                 data: {
@@ -224,8 +217,6 @@ const logout = async (req, res) => {
             });
         }
 
-        // En arquitecturas stateless (JWT en Authorization Header), el servidor confirma
-        // el cierre de sesión para que el Frontend proceda a destruir el token almacenado.
         return res.status(200).json({
             status: 'success',
             message: 'Sesión cerrada correctamente',
